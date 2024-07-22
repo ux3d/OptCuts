@@ -6,3 +6,7 @@ build*/
 output/
 ext/tbb/
 ext/.cache
+/dist
+/PyOptCuts.egg-info
+/venv
+__pycache__

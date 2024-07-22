@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include(${PROJECT_NAME}Dependencies)
 
+
 # libigl
 option(LIBIGL_USE_STATIC_LIBRARY "Use libigl as static library" OFF)
 option(LIBIGL_WITH_ANTTWEAKBAR       "Use AntTweakBar"    OFF)
@@ -29,6 +30,24 @@ option(LIBIGL_WITH_XML               "Use XML"            OFF)
 find_package(LIBIGL REQUIRED QUIET)
 
 
+# Python Bindings
+
+if (CMAKE_VERSION VERSION_LESS 3.18)
+  set(DEV_MODULE Development)
+else()
+  set(DEV_MODULE Development.Module)
+endif()
+
+find_package(Python 3.10 COMPONENTS Interpreter ${DEV_MODULE} REQUIRED)
+
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/nanobind)
+
+
 # Intel TBB
 #include(ext/tbb/cmake/TBBGet.cmake)
 #tbb_get(TBB_ROOT tbb_root CONFIG_DIR TBB_DIR)
@@ -36,7 +55,6 @@ find_package(LIBIGL REQUIRED QUIET)
 
 
 file(GLOB SRCFILES
-  src/main.cpp
   src/Optimizer.cpp
   src/TriMesh.cpp
   src/Scaffold.cpp
@@ -58,6 +76,11 @@ include_directories(
   src/UnitTest
 )
 
-add_executable(${PROJECT_NAME}_bin ${SRCFILES})
-
+add_executable(${PROJECT_NAME}_bin src/main.cpp ${SRCFILES})
 target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl_glfw igl::triangle igl::png TBB::tbb)
+
+nanobind_add_module(PyOptCuts src/PyOptCuts.cpp ${SRCFILES})
+target_link_libraries(PyOptCuts PRIVATE igl::core igl::opengl_glfw igl::triangle igl::png TBB::tbb)
+install(TARGETS PyOptCuts DESTINATION ${CMAKE_SOURCE_DIR}/dist)
+
+install(FILES ${CMAKE_SOURCE_DIR}/src/__init__.py DESTINATION ${CMAKE_SOURCE_DIR}/dist)
