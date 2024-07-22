@@ -1500,6 +1500,6 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
     return 0;
 }
 
-NB_MODULE(_py_opt_cuts, m) {
+NB_MODULE(PyOptCuts, m) {
     m.def("optimize", &optimize_mesh, "Optimize the mesh data");
 }

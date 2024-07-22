@@ -17,11 +17,11 @@ class CMakeBuild(build_ext):
 
         if not os.path.exists(ext.build_temp):
             os.makedirs(ext.build_temp)
-        subprocess.check_call(['cmake', '..'] + cmake_args, cwd=ext.build_temp)
-        subprocess.check_call(['cmake', '--build', '.', '--target', 'install'] + build_args, cwd=ext.build_temp)
+        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=ext.build_temp)
+        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=ext.build_temp)
 
 class CMakeExtension(Extension):
-    def __init__(self, name, sourcedir='.', builddir='build'):
+    def __init__(self, name, sourcedir='.', builddir='build/cpp_build'):
         super().__init__(name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
         self.build_temp = os.path.abspath(builddir)
@@ -35,9 +35,10 @@ setup(
     description='A Python wrapper for OptCuts',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    ext_modules=[CMakeExtension('PyOptCuts._py_opt_cuts', sourcedir='.')],
+    ext_modules=[CMakeExtension('PyOptCuts', sourcedir='.')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
     packages=setuptools.find_packages(),
     include_package_data=True,
+    test_suite="tests"
 )
