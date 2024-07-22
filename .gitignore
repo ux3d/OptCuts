@@ -10,3 +10,4 @@ ext/.cache
 /PyOptCuts.egg-info
 /venv
 __pycache__
+PyOptCuts.*.so
