@@ -18,7 +18,7 @@ class CMakeBuild(build_ext):
         if not os.path.exists(ext.build_temp):
             os.makedirs(ext.build_temp)
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=ext.build_temp)
-        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=ext.build_temp)
+        subprocess.check_call(['cmake', '--build', '.', '--target', 'PyOptCuts'] + build_args, cwd=ext.build_temp)
 
 class CMakeExtension(Extension):
     def __init__(self, name, sourcedir='.', builddir='build/cpp_build'):
