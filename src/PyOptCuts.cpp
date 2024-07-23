@@ -1,6 +1,7 @@
 #include <Eigen/Dense>
 #include <nanobind/eigen/dense.h>
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/tuple.h>
 
 #include "GIF.hpp"
 #include "IglUtils.hpp"
@@ -34,14 +35,11 @@
 #include <ctime>
 #include <fstream>
 #include <string>
-
-Eigen::MatrixXd V, UV, N;
-Eigen::MatrixXi F, FUV, FN;
+#include <tuple>
 
 // optimization
 OptCuts::MethodType methodType;
 std::vector<const OptCuts::TriMesh*> triSoup;
-int vertAmt_input;
 OptCuts::TriMesh triSoup_backup;
 OptCuts::Optimizer* optimizer;
 std::vector<OptCuts::Energy*> energyTerms;
@@ -541,30 +539,22 @@ bool optimizationStep()
     return converged;
 }
 
-int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::MatrixXd& normals, Eigen::MatrixXi& indices, Eigen::MatrixXi& uv_indices, Eigen::MatrixXi& normal_indices)
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::MatrixXi& indices, Eigen::MatrixXi& uv_indices)
 {
+    Eigen::MatrixXd V, UV;
+    Eigen::MatrixXi F, FUV;
+
     V = vertices;
     UV = uvs;
-    N = normals;
     F = indices;
     FUV = uv_indices;
-    FN = normal_indices;
-
-    vertAmt_input = V.rows();
-
-    std::string meshFileName("cone2.0.obj");
-    std::string meshFilePath = meshFileName;
-    meshFileName = meshFileName.substr(meshFileName.find_last_of('/') + 1);
-
-    std::string meshFolderPath = meshFilePath.substr(0, meshFilePath.find_last_of('/'));
-    std::string meshName = meshFileName.substr(0, meshFileName.find_last_of('.'));
 
     Eigen::VectorXi B;
     bool isManifold = igl::is_vertex_manifold(F, B) && igl::is_edge_manifold(F);
     if (!isManifold) {
         std::cout << "input mesh contains non-manifold edges or vertices" << std::endl;
         std::cout << "please cleanup the mesh and retry" << std::endl;
-        exit(-1);
+        throw std::runtime_error("non-manifold mesh");
     }
 
     // Argument 3: lambda
@@ -597,7 +587,7 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
         break;
 
     default:
-        assert(0 && "method type not valid!");
+        throw std::runtime_error("invalid method type");
         break;
     }
 
@@ -689,7 +679,6 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
         }
 
         triSoup.emplace_back(temp);
-        outputFolderPath += meshName + "_input_" + OptCuts::IglUtils::rtos(lambda_init) + "_" + OptCuts::IglUtils::rtos(testID) + "_" + startDS + folderTail;
     } else {
         // no UV provided, compute initial UV
 
@@ -844,7 +833,6 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
         igl::harmonic(A, M, bnd_stacked, bnd_uv_stacked, 1, UV_Tutte);
 
         triSoup.emplace_back(new OptCuts::TriMesh(V, F, UV_Tutte, temp.F, false));
-        outputFolderPath += meshName + "_Tutte_" + OptCuts::IglUtils::rtos(lambda_init) + "_" + OptCuts::IglUtils::rtos(testID) + "_" + startDS + folderTail;
     }
 
     // initialize UV
@@ -856,7 +844,7 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
     logFile.open(outputFolderPath + "log.txt");
     if (!logFile.is_open()) {
         std::cout << "failed to create log file, please ensure output directory is created successfully!" << std::endl;
-        return -1;
+        throw std::runtime_error("failed to create log file");
     }
 
     // setup timer
@@ -891,31 +879,11 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
         fractureMode = true;
     }
 
-    /////////////////////////////////////////////////////////////////////////////
-    // regional seam placement
-    std::ifstream vWFile(meshFolderPath + "/" + meshName + "_selected.txt");
-    if (vWFile.is_open()) {
-        while (!vWFile.eof()) {
-            int selected;
-            vWFile >> selected;
-            if (selected < optimizer->getResult().vertWeight.size()) {
-                optimizer->getResult().vertWeight[selected] = 100.0;
-            }
-        }
-        vWFile.close();
-
-        OptCuts::IglUtils::smoothVertField(optimizer->getResult(),
-            optimizer->getResult().vertWeight);
-
-        std::cout << "OptCuts with regional seam placement" << std::endl;
-    }
-    //////////////////////////////////////////////////////////////////////////////
-
     while (!optimizationStep()) {
     }
 
     // save final result
-    triSoup[channel_result]->saveAsMesh(outputFolderPath + infoName + "_mesh_normalizedUV.obj", F, true);
+    const auto meshData = triSoup[channel_result]->getMeshData(F, true);
 
     // Before exit
     logFile.close();
@@ -924,7 +892,7 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
     }
     delete optimizer;
     delete triSoup[0];
-    return 0;
+    return std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> { meshData.V, meshData.UV, meshData.F, meshData.FUV };
 }
 
 NB_MODULE(PyOptCuts, m)
