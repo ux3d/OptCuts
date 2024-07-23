@@ -11,3 +11,4 @@ ext/.cache
 /venv
 __pycache__
 PyOptCuts.*.so
+/vscode_build
