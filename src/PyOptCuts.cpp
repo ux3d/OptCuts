@@ -75,46 +75,20 @@ std::string outputFolderPath = "output/";
 
 // visualization
 bool headlessMode = true;
-const int channel_initial = 0;
-const int channel_result = 1;
-const int channel_findExtrema = 2;
-int viewChannel = channel_result;
-bool viewUV = true; // view UV or 3D model
+constexpr int channel_initial = 0;
+constexpr int channel_result = 1;
+constexpr int channel_findExtrema = 2;
 double texScale = 1.0;
-bool showSeam = true;
-Eigen::MatrixXd seamColor;
-int showDistortion = 1; // 0: don't show; 1: SD energy value; 2: L2 stretch value;
-bool showTexture = true; // show checkerboard
-bool isLighting = false;
-bool showFracTail = true;
 float fracTailSize = 15.0f;
-bool offlineMode = true;
-bool saveInfo_postDraw = false;
 std::string infoName = "";
-bool isCapture3D = false;
-int capture3DI = 0;
-
-time_t lastStart_world;
 Timer timer, timer_step;
-
-void saveInfo(bool writePNG = true, bool writeGIF = true, bool writeMesh = true);
 
 void proceedOptimization(int proceedNum = 1)
 {
     for (int proceedI = 0; (proceedI < proceedNum) && (!converged); proceedI++) {
-        //        infoName = std::to_string(iterNum);
-        //        saveInfo(true, false, true); //!!! output mesh for making video, PNG output only works under online rendering mode
         std::cout << "Iteration" << iterNum << ":" << std::endl;
         converged = optimizer->solve(1);
         iterNum = optimizer->getIterNum();
-    }
-}
-
-void saveInfo(bool writePNG, bool writeGIF, bool writeMesh)
-{
-    if (writeMesh) {
-        triSoup[channel_result]->saveAsMesh(outputFolderPath + infoName + "_mesh.obj", F);
-        triSoup[channel_result]->saveAsMesh(outputFolderPath + infoName + "_mesh_normalizedUV.obj", F, true);
     }
 }
 
@@ -308,7 +282,6 @@ bool updateLambda_stationaryV(bool cancelMomentum = true, bool checkConvergence 
             // save info at first feasible stationaryVT for comparison
             static bool saved = false;
             if (!saved) {
-                time(&lastStart_world);
                 saved = true;
             }
 
@@ -460,8 +433,6 @@ bool optimizationStep()
         proceedOptimization();
     }
 
-    saveInfo_postDraw = true;
-
     double stretch_l2, stretch_inf, stretch_shear, compress_inf;
     triSoup[channel_result]->computeStandardStretch(stretch_l2, stretch_inf, stretch_shear, compress_inf);
     double measure_bound = optimizer->getLastEnergyVal(true) / energyParams[0];
@@ -503,7 +474,6 @@ bool optimizationStep()
             // save info once bound is reached for comparison
             static bool saved = false;
             if (!saved) {
-                time(&lastStart_world);
                 saved = true;
             }
         }
@@ -943,6 +913,9 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
 
     while (!optimizationStep()) {
     }
+
+    // save final result
+    triSoup[channel_result]->saveAsMesh(outputFolderPath + infoName + "_mesh_normalizedUV.obj", F, true);
 
     // Before exit
     logFile.close();
