@@ -673,8 +673,7 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> o
             igl::harmonic(A, M, bnd_stacked, bnd_uv_stacked, 1, temp->V);
 
             if (!temp->checkInversion()) {
-                std::cout << "local injectivity still violated in the computed initial UV map, " << "please carefully check UV topology for e.g. non-manifold vertices. " << "Exit program..." << std::endl;
-                exit(-1);
+                throw std::runtime_error("local injectivity still violated in the computed initial UV map, please carefully check UV topology for e.g. non-manifold vertices.");
             }
         }
 
@@ -712,8 +711,7 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> o
                     // closed genus-0 surface
                     components_to_cut.emplace_back(componentI);
                 } else if (EC != 1) {
-                    std::cout << "unsupported single-connected component!" << std::endl;
-                    exit(-1);
+                    throw std::runtime_error("unsupported single-connected component");
                 }
             }
             std::cout << components_to_cut.size() << " components to cut to disk" << std::endl;
@@ -748,8 +746,7 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> o
                     }
 
                     if (!cuts_made) {
-                        std::cout << "FATAL ERROR: no cuts made when cutting input geometry to disk-topology!" << std::endl;
-                        exit(-1);
+                        throw std::runtime_error("no cuts made when cutting input geometry to disk-topology");
                     }
                 } else {
                     // cut the topological sphere into a topological disk
@@ -882,10 +879,9 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> o
     while (!optimizationStep()) {
     }
 
-    // save final result
+    // Get the result
     const auto meshData = triSoup[channel_result]->getMeshData(F, true);
 
-    // Before exit
     logFile.close();
     for (auto& eI : energyTerms) {
         delete eI;
