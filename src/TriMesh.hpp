@@ -12,6 +12,7 @@
 
 #include <set>
 #include <array>
+#include <tuple>
 
 namespace OptCuts{
     
@@ -21,6 +22,13 @@ namespace OptCuts{
         P_CYLINDER
     };
     class Scaffold;
+
+    struct MeshData {
+        Eigen::MatrixXd V;
+        Eigen::MatrixXd UV;
+        Eigen::MatrixXi F;
+        Eigen::MatrixXi FUV;
+    };
     
     // duplicate the vertices and edges of a mesh to separate its triangles,
     // adjacent triangles in the original mesh will have a cohesive edge structure to
@@ -125,6 +133,9 @@ namespace OptCuts{
         void saveAsMesh(const std::string& filePath,
                         const Eigen::MatrixXi& F0,
                         bool scaleUV = false) const;
+
+        MeshData getMeshData(const Eigen::MatrixXi& F0, bool scaleUV = false) const;
+    
         
     public: // helper function
         void computeLaplacianMtr(void);

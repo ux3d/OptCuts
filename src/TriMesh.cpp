@@ -1936,6 +1936,12 @@ namespace OptCuts {
                              const Eigen::MatrixXi& F0,
                              bool scaleUV) const
     {
+        auto meshData = getMeshData(F0, scaleUV);
+        save(filePath, meshData.V, meshData.F, meshData.UV, meshData.FUV);
+    }
+
+    MeshData TriMesh::getMeshData(const Eigen::MatrixXi &F0, bool scaleUV) const 
+    {
         assert(F0.rows() == F.rows());
         assert(F0.cols() == 3);
         
@@ -1964,8 +1970,13 @@ namespace OptCuts {
                 UV_mesh(uvI, 1) = (UV_mesh(uvI, 1) - vMin) / scale;
             }
         }
-        
-        save(filePath, V_mesh, F0, UV_mesh, F);
+
+        return MeshData { 
+            .V = V_mesh,
+            .UV = UV_mesh,
+            .F = F0,
+            .FUV = F,
+        };
     }
     
     bool TriMesh::findBoundaryEdge(int vI, const std::pair<int, int>& startEdge,
