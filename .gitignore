@@ -12,3 +12,4 @@ ext/.cache
 __pycache__
 PyOptCuts.*.so
 /vscode_build
+/.cache
