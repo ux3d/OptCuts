@@ -51,14 +51,12 @@ std::vector<double> energyParams;
 bool bijectiveParam = true;
 bool rand1PInitCut = false;
 double lambda_init;
-bool optimization_on = false;
 int iterNum = 0;
 int converged = 0;
 bool fractureMode = false;
 double fracThres = 0.0;
 bool topoLineSearch = true;
 int initCutOption = 0;
-bool outerLoopFinished = false;
 double upperBound = 4.1;
 const double convTol_upperBound = 1.0e-3;
 
@@ -101,7 +99,6 @@ GifWriter GIFWriter;
 const uint32_t GIFDelay = 10; //*10ms
 double GIFScale = 0.25;
 
-double secPast = 0.0;
 time_t lastStart_world;
 Timer timer, timer_step;
 
@@ -126,49 +123,6 @@ void saveInfo(bool writePNG, bool writeGIF, bool writeMesh)
         triSoup[channel_result]->saveAsMesh(outputFolderPath + infoName + "_mesh.obj", F);
         triSoup[channel_result]->saveAsMesh(outputFolderPath + infoName + "_mesh_normalizedUV.obj", F, true);
     }
-}
-
-void saveInfoForPresent(const std::string fileName = "info.txt")
-{
-    std::ofstream file;
-    file.open(outputFolderPath + fileName);
-    assert(file.is_open());
-    
-    file << vertAmt_input << " " <<
-        triSoup[channel_initial]->F.rows() << std::endl;
-    
-    file << iterNum << " " << optimizer->getTopoIter() << " 0 0 " << lambda_init << " " << 1.0 - energyParams[0] << std::endl;
-    
-    file << "0.0 0.0 " << timer.timing_total() << " " << secPast <<
-        " topo" << timer.timing(0) << " desc" << timer.timing(1) << " scaf" << timer.timing(2) << " enUp" << timer.timing(3) <<
-        " mtrComp" << timer_step.timing(0) << " mtrAssem" << timer_step.timing(1) << " symFac" << timer_step.timing(2) <<
-        " numFac" << timer_step.timing(3) << " backSolve" << timer_step.timing(4) << " lineSearch" << timer_step.timing(5) <<
-        " bSplit" << timer_step.timing(6) << " iSplit" << timer_step.timing(7) << " cMerge" << timer_step.timing(8) << std::endl;
-    
-    double seamLen;
-    if(energyParams[0] == 1.0) {
-        // pure distortion minimization mode for models with initial cuts also reflected on the surface as boundary edges...
-        triSoup[channel_result]->computeBoundaryLen(seamLen);
-        seamLen /= 2.0;
-    }
-    else {
-        triSoup[channel_result]->computeSeamSparsity(seamLen, !fractureMode);
-//        // for models with initial cuts also reflected on the surface as boundary edges...
-//        double boundaryLen;
-//        triSoup[channel_result]->computeBoundaryLen(boundaryLen);
-//        seamLen += boundaryLen;
-    }
-    double distortion;
-    energyTerms[0]->computeEnergyVal(*triSoup[channel_result], distortion);
-    file << distortion << " " <<
-        seamLen / triSoup[channel_result]->virtualRadius << std::endl;
-    
-    triSoup[channel_result]->outputStandardStretch(file);
-    
-    file << "initialSeams " << triSoup[channel_result]->initSeams.rows() << std::endl;
-    file << triSoup[channel_result]->initSeams << std::endl;
-    
-    file.close();
 }
 
 int computeOptPicked(const std::vector<std::pair<double, double>>& energyChanges0,
@@ -373,14 +327,8 @@ bool updateLambda_stationaryV(bool cancelMomentum = true, bool checkConvergence 
             // save info at first feasible stationaryVT for comparison
             static bool saved = false;
             if(!saved) {
-//                logFile << "saving firstFeasibleS..." << std::endl;
-//                saveScreenshot(outputFolderPath + "firstFeasibleS.png", 0.5, false, true); //TODO: saved is before roll back...
-//                triSoup[channel_result]->saveAsMesh(outputFolderPath + "firstFeasibleS_mesh.obj", F);
-                secPast += difftime(time(NULL), lastStart_world);
-//                saveInfoForPresent("info_firstFeasibleS.txt");
                 time(&lastStart_world);
                 saved = true;
-//                logFile << "firstFeasibleS saved" << std::endl;
             }
             
             if(measure_bound >= upperBound - convTol_upperBound) {
@@ -519,10 +467,8 @@ bool updateLambda_stationaryV(bool cancelMomentum = true, bool checkConvergence 
     return true;
 }
 
-void converge_preDrawFunc()
-{
-    infoName = "finalResult";
-    
+void postConvergeOptimization()
+{   
     if(!bijectiveParam) {
         // perform exact solve
         optimizer->setAllowEDecRelTol(false);
@@ -531,17 +477,7 @@ void converge_preDrawFunc()
         while(!converged) {
             proceedOptimization(1000);
         }
-    }
-    
-    secPast += difftime(time(NULL), lastStart_world);
-    
-    optimizer->flushEnergyFileOutput();
-    optimizer->flushGradFileOutput();
-    
-    optimization_on = false;
-    std::cout << "optimization converged, with " << secPast << "s." << std::endl;
-    logFile << "optimization converged, with " << secPast << "s." << std::endl;
-    outerLoopFinished = true;
+    }    
 }
 
 bool optimizationStep()
@@ -568,11 +504,6 @@ bool optimizationStep()
                 while(!converged) {
                     proceedOptimization(1000);
                 }
-                secPast += difftime(time(NULL), lastStart_world);
-                
-                std::cout << "optimization converged, with " << secPast << "s." << std::endl;
-                logFile << "optimization converged, with " << secPast << "s." << std::endl;
-                outerLoopFinished = true;
             }
             else {
                 infoName = std::to_string(iterNum);
@@ -599,7 +530,6 @@ bool optimizationStep()
                 // save info once bound is reached for comparison
                 static bool saved = false;
                 if(!saved) {
-                    secPast += difftime(time(NULL), lastStart_world);
                     time(&lastStart_world);
                     saved = true;
                 }
@@ -624,7 +554,7 @@ bool optimizationStep()
                 (!updateLambda_stationaryV()))
             {
                 // oscillation detected
-                converge_preDrawFunc();
+                postConvergeOptimization();
             }
             else {
                 logFile << "boundary op V " << triSoup[channel_result]->V_rest.rows() << std::endl;
@@ -644,7 +574,7 @@ bool optimizationStep()
                             (!updateLambda_stationaryV(false, true)))
                         {
                             // all converged
-                            converge_preDrawFunc();
+                            postConvergeOptimization();
                         }
                         else {
                             // split or merge after lambda update
@@ -672,7 +602,7 @@ bool optimizationStep()
         }
             
         case OptCuts::MT_DISTMIN: {
-            converge_preDrawFunc();
+            postConvergeOptimization();
             break;
         }
     }
