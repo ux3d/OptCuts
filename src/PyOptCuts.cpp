@@ -676,7 +676,7 @@ bool optimizationStep()
             break;
         }
     }
-    return false;
+    return converged;
 }
 
 int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::MatrixXd& normals, Eigen::MatrixXi& indices, Eigen::MatrixXi& uv_indices, Eigen::MatrixXi& normal_indices)
@@ -1059,8 +1059,8 @@ int optimize_mesh(Eigen::MatrixXd& vertices, Eigen::MatrixXd& uvs, Eigen::Matrix
     }
     //////////////////////////////////////////////////////////////////////////////
     
-    while(true) {
-        optimizationStep();
+    while(!optimizationStep()) {
+       
     }
     
     // Before exit
