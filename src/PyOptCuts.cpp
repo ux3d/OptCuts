@@ -77,7 +77,7 @@ std::ofstream logFile;
 std::string outputFolderPath = "output/";
 
 // visualization
-bool headlessMode = false;
+bool headlessMode = true;
 igl::opengl::glfw::Viewer viewer;
 const int channel_initial = 0;
 const int channel_result = 1;
@@ -92,7 +92,7 @@ bool showTexture = true; // show checkerboard
 bool isLighting = false;
 bool showFracTail = true;
 float fracTailSize = 15.0f;
-bool offlineMode = false;
+bool offlineMode = true;
 bool saveInfo_postDraw = false;
 std::string infoName = "";
 bool isCapture3D = false;
