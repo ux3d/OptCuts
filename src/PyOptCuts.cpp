@@ -22,7 +22,6 @@
 #include <igl/euler_characteristic.h>
 #include <igl/harmonic.h>
 #include <igl/map_vertices_to_circle.h>
-#include <igl/png/writePNG.h>
 #include <igl/readOFF.h>
 
 #include <igl/is_edge_manifold.h>
@@ -891,7 +890,7 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> o
     return std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXi, Eigen::MatrixXi> { meshData.V, meshData.UV, meshData.F, meshData.FUV };
 }
 
-NB_MODULE(PyOptCuts, m)
+NB_MODULE(_PyOptCutsImpl, m)
 {
     m.def("optimize", &optimize_mesh, "Optimize the mesh data");
 }
