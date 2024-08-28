@@ -80,7 +80,6 @@ include_directories(
   src/Energy
   src/Utils
   src/LinSysSolver
-  src/UnitTest
 )
 
 if (OPTCUTS_PYTHON)
